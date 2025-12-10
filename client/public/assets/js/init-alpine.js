@@ -348,63 +348,65 @@ function data() {
         const fileSelector = document.getElementById('file_selector');
         fileSelector.removeEventListener('change', this.handle_load_query.bind(this));
     },
-    admin_logged_in: false,
-    admin_login_panel_show: false,
-    admin_password_input: '',
-    admin_login_message: ' ',
-    admin_login() {
-      this.admin_login_panel_show = true;
-      console.log('admin_login');
-    },
-    async handle_admin_login() {
+    logged_in: false,
+    login_username: '',
+    login_password: '',
+    show_export_patients: false,
+    auth_error: false,
+    auth_message: ' ',
+    async user_login() {
       try {
-        resp = await(await fetch("/admin_login", {
+        resp = await(await fetch("/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({'password':this.admin_password_input})
+          body: JSON.stringify({'username':this.login_username, 'password':this.login_password})
         })).json();
         console.log(resp)
-        if (resp.msg == 'ok') {
-          this.admin_logged_in = true;
-          this.admin_login_panel_show = false,
-          this.admin_password_input = '';
-          this.admin_login_message = ' '
-        } else {
-          this.admin_logged_in = false;
-          this.admin_password_input = '';
-          this.admin_login_message = 'Passowrd incorrect. Please try again.'
+        if (resp.msg === 'ok') {
+          this.logged_in = true;
+          this.auth_error = false;
+          if(resp.role === 'admin'){
+                this.show_export_patients = true;
+          }
+          this.login_username = '';
+          this.login_password = '';
+          this.auth_message = ' '
+        } else if (resp.msg === 'error') {
+          this.logged_in = false;
+          this.auth_error = true;
+          this.login_username = '';
+          this.login_password = '';
+          this.auth_message = 'Password incorrect. Please try again.'
         }
       } catch (err) {
-        console.log('fetch("/admin_login") (err):', err);
+        console.log('fetch("/auth/login") (err):', err);
         this.running_status = 'Something went wrong in the server, please try again later.';
-        this.admin_logged_in = false;
-        this.admin_login_panel_show = false;
-        this.admin_password_input = '';
-        this.admin_login_message = ' ';
+        this.logged_in = false;
+        this.login_username = '';
+        this.auth_message = ' ';
         this.reset_results();
         this.clear_charts();
         return;
       }
     },
-    async admin_logout() {
+    async user_logout() {
       try {
-        resp = await(await fetch("/admin_logout", {
+        resp = await(await fetch("/auth/logout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({'msg':'logout'})
         })).json();
-        console.log(resp)
-        this.admin_logged_in = false;
-        this.admin_login_panel_show = false;
-        this.admin_password_input = '';
-        this.admin_login_message = ' ';
+        this.logged_in = false;
+        this.login_username = '';
+        this.login_password = '';
+        this.auth_message = ' '
       } catch (err) {
         console.log('fetch("/admin_logout") (err):', err);
         this.running_status = 'Something went wrong in the server, please try again later.';
-        this.admin_logged_in = false;
-        this.admin_login_panel_show = false;
-        this.admin_password_input = '';
-        this.admin_login_message = ' ';
+        this.logged_in = false;
+        this.login_username = '';
+        this.login_password = '';
+        this.auth_message = ' '
         this.reset_results();
         this.clear_charts();
         return;

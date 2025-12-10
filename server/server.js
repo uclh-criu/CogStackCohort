@@ -33,9 +33,6 @@ console.log('Loading data...');
 const snomed_terms = require('./data/snomed_terms.json');
 const cui_pt2ch = require('./data/cui_pt2ch.json');
 
-// for admin login
-const admin_pwd = process.env.PASSWORD || 'admin_pass';
-
 //========================================================
 // db variables
 const sex_code2id = {
@@ -561,13 +558,18 @@ app.post('/compare_query', (req, res) => {
 //========================================================
 
 //========================================================
-// api to handle admin_login
-app.post("/admin_login", (req, res) => {
-    console.log('/admin_login')
+// api to handle user login
+app.post("/auth/login", (req, res) => {
+    console.log('/auth/login')
+    const username = req.body.username;
     const pwd = req.body.password;
-    if (pwd == admin_pwd) {
+    const user_credentials_raw = fs.readFileSync('./user_credential.json');
+    const user_credentials = JSON.parse(user_credentials_raw);
+    const user_filtered = user_credentials.filter(item => item.name === username && item.password === pwd);
+    if (user_filtered != null && user_filtered.length === 1) {
         req.session.logged_in = true;
-        res.status(200).json({'msg':'ok'}).end();
+        req.session.role = user_filtered[0].role;
+        res.status(200).json({'msg':'ok', 'role': user_filtered[0].role}).end();
     } else {
         req.session.destroy((err) => console.log(err));
         res.status(200).json({'msg':'error'}).end();
@@ -576,9 +578,9 @@ app.post("/admin_login", (req, res) => {
 //========================================================
 
 //========================================================
-// api to handle admin_logout
-app.post("/admin_logout", (req, res) => {
-    console.log('/admin_logout')
+//api to handle user logout
+app.post("/auth/logout", (req, res) => {
+    console.log('/auth/logout')
     req.session.destroy((err) => console.log(err));
     res.status(200).json({'msg':'ok'}).end();
 });
