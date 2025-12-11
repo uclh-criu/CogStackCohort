@@ -6,7 +6,7 @@ services:
       args:
         - HTTP_PROXY=${HTTP_PROXY:-}
         - HTTPS_PROXY=${HTTPS_PROXY:-}
-        - random=${RANDOM:true} # Set to "true" or "false" depending on whether you want to run gen_random_data.js
+        - random=${RANDOM:-true} # Set to "true" or "false" depending on whether you want to run gen_random_data.js
 
     ports:
       - "3000:3000"  # Maps port 3000 on the host to port 3000 in the container
