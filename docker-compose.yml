@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  cogstack_cohort_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        random: "false"  # Set to "true" or "false" depending on whether you want to run gen_random_data.js
+    ports:
+      - "3000:3000"  # Maps port 3000 on the host to port 3000 in the container
+    volumes:
+      - ./server/data:/usr/src/app/server/data  # Mounts the local folder `local_data` to `/usr/src/app/server/data` in the container
