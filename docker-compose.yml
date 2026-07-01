@@ -42,6 +42,10 @@ services:
       LLM_MODEL: "cms-gpt-oss-20b"
       MEDCAT_URL: "http://cohorter-medcat:3001"
       ALLOW_ORIGINS: "*"
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      https_proxy: ${https_proxy:-}
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      http_proxy: ${http_proxy:-}
     depends_on:
       - medcat
     restart: unless-stopped

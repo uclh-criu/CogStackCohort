@@ -3,6 +3,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import { ProxyAgent } from 'undici';
 
 // ---- config ----
 const PORT = process.env.PORT || 3002;
@@ -18,6 +19,10 @@ const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://dt4h-uclh.uksout
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'dummy';
 const OPENAI_DISABLE_TLS = process.env.OPENAI_DISABLE_TLS !== 'false'; // default true
 if (LLM_BACKEND === 'openai' && OPENAI_DISABLE_TLS) process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+
+// Proxy support — undici fetch doesn't respect env vars automatically
+const PROXY_URL = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy || '';
+const proxyDispatcher = PROXY_URL ? new ProxyAgent({ uri: PROXY_URL, connect: { rejectUnauthorized: false } }) : undefined;
 
 // Model (applies to both backends)
 const MODEL = process.env.LLM_MODEL || (LLM_BACKEND === 'openai' ? 'cms-gpt-oss-20b' : 'gpt-oss:20b');
@@ -790,7 +795,8 @@ app.get('/api/models', async (req, res) => {
     let models;
     if (LLM_BACKEND === 'openai') {
       const rr = await fetch(`${OPENAI_BASE_URL}/models`, {
-        headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` }
+        headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+        ...(proxyDispatcher ? { dispatcher: proxyDispatcher } : {})
       });
       if (!rr.ok) {
         const txt = await rr.text();
@@ -845,7 +851,8 @@ app.post('/api/compile', async (req, res) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        ...(proxyDispatcher ? { dispatcher: proxyDispatcher } : {})
       });
       const resp = await rr.json();
       raw = String(resp?.choices?.[0]?.message?.content || '');
