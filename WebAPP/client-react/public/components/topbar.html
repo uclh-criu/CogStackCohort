@@ -57,6 +57,9 @@
           role="menu"
           aria-label="Settings menu"
         >
+          <li class="px-2 py-1 text-xs border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 rounded font-mono">
+             <div>User Role: <span class="font-bold text-purple-600" x-text="user_role || '(empty)'"></span></div>
+          </li>
           <li class="flex">
             <!-- Show this when you're in the default (NL) view -->
             <a x-show="!isV1"
@@ -84,19 +87,25 @@
               Load Query
             </button>
           </li>
-          <li role="none" x-show="!admin_logged_in">
-            <button @click="admin_login" role="menuitem"
+<!--          <li role="none" x-show="!admin_logged_in">-->
+<!--            <button @click="admin_login" role="menuitem"-->
+<!--              class="w-full text-left px-2 py-1 text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-700">-->
+<!--              Admin Login-->
+<!--            </button>-->
+<!--          </li>-->
+<!--          <li role="none" x-show="admin_logged_in">-->
+<!--            <button @click="admin_logout" role="menuitem"-->
+<!--              class="w-full text-left px-2 py-1 text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-700">-->
+<!--              Admin Logout-->
+<!--            </button>-->
+<!--          </li>-->
+          <li role="none">
+            <button @click="logout" role="menuitem"
               class="w-full text-left px-2 py-1 text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-              Admin Login
+              Logout
             </button>
           </li>
-          <li role="none" x-show="admin_logged_in">
-            <button @click="admin_logout" role="menuitem"
-              class="w-full text-left px-2 py-1 text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-              Admin Logout
-            </button>
-          </li>
-          <li role="none" x-show="admin_logged_in">
+          <li role="none" x-show="logged_in && user_role == 'admin'">
             <button @click="export_patients" role="menuitem"
               class="w-full text-left px-2 py-1 text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-700">
               Export patients
