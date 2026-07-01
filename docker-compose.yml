@@ -35,11 +35,12 @@ services:
     ports:
       - "3002:3002"
     environment:
-      LLM_BACKEND: "openai"
+      LLM_BACKEND: "ollama-chat"
+      OLLAMA_CHAT_BASE_URL: "https://dt4h-uclh.uksouth.cloudapp.azure.com:8080/cms/huggingface-llm/ollama"
       OPENAI_BASE_URL: "https://dt4h-uclh.uksouth.cloudapp.azure.com:8080/cms/huggingface-llm/openai/v1"
       OPENAI_API_KEY: "dummy"
       OPENAI_DISABLE_TLS: "true"
-      LLM_MODEL: "cms-gpt-oss-20b"
+      LLM_MODEL: "cms-mistral-nemo-instruct-2407"
       MEDCAT_URL: "http://cohorter-medcat:3001"
       ALLOW_ORIGINS: "*"
       HTTPS_PROXY: ${HTTPS_PROXY:-}

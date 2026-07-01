@@ -8,24 +8,64 @@ import { ProxyAgent } from 'undici';
 // ---- config ----
 const PORT = process.env.PORT || 3002;
 
-// LLM backend: 'ollama' (default) or 'openai'
-const LLM_BACKEND = process.env.LLM_BACKEND || 'openai';
+// LLM backend: 'ollama-chat' (default) | 'openai' | 'ollama'
+const LLM_BACKEND = process.env.LLM_BACKEND || 'ollama-chat';
 
-// Ollama settings (used when LLM_BACKEND=ollama)
+// Ollama generate settings (used when LLM_BACKEND=ollama)
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:8002/api/generate';
+
+// Ollama chat settings (used when LLM_BACKEND=ollama-chat) — structured output
+const OLLAMA_CHAT_BASE_URL = process.env.OLLAMA_CHAT_BASE_URL || 'https://dt4h-uclh.uksouth.cloudapp.azure.com:8080/cms/huggingface-llm/ollama';
 
 // OpenAI-compatible settings (used when LLM_BACKEND=openai)
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://dt4h-uclh.uksouth.cloudapp.azure.com:8080/cms/huggingface-llm/openai/v1';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'dummy';
 const OPENAI_DISABLE_TLS = process.env.OPENAI_DISABLE_TLS !== 'false'; // default true
-if (LLM_BACKEND === 'openai' && OPENAI_DISABLE_TLS) process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+if (['openai', 'ollama-chat'].includes(LLM_BACKEND) && OPENAI_DISABLE_TLS) process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
 
 // Proxy support — undici fetch doesn't respect env vars automatically
 const PROXY_URL = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy || '';
 const proxyDispatcher = PROXY_URL ? new ProxyAgent({ uri: PROXY_URL, connect: { rejectUnauthorized: false } }) : undefined;
 
-// Model (applies to both backends)
-const MODEL = process.env.LLM_MODEL || (LLM_BACKEND === 'openai' ? 'cms-gpt-oss-20b' : 'gpt-oss:20b');
+// Model (applies to all backends)
+const MODEL = process.env.LLM_MODEL || (LLM_BACKEND === 'openai' ? 'cms-gpt-oss-20b' : 'cms-mistral-nemo-instruct-2407');
+
+// JSON schema for structured output (ollama-chat backend)
+const DSL_SCHEMA = {
+  type: 'object',
+  properties: {
+    phenotype: {
+      type: 'object',
+      properties: {
+        all_of: { type: 'array', items: { type: 'string' } },
+        any_of: { type: 'array', items: { type: 'string' } },
+        none_of: { type: 'array', items: { type: 'string' } }
+      },
+      required: ['all_of', 'any_of', 'none_of'],
+      additionalProperties: false
+    },
+    temporal: {
+      type: 'object',
+      properties: { chains: { type: 'array' } },
+      required: ['chains'],
+      additionalProperties: false
+    },
+    demographics: {
+      type: 'object',
+      properties: {
+        age: { type: 'object' },
+        sex: { type: 'array', items: { type: 'string' } },
+        ethnicity: { type: 'array', items: { type: 'string' } },
+        vital_status: { type: 'array', items: { type: 'string' } }
+      },
+      required: ['age', 'sex', 'ethnicity', 'vital_status'],
+      additionalProperties: false
+    },
+    options: { type: 'object' }
+  },
+  required: ['phenotype', 'temporal', 'demographics', 'options'],
+  additionalProperties: false
+};
 
 // CORS: allow list via env (comma-separated) or "*"
 const allowList = (process.env.ALLOW_ORIGINS || '*')
@@ -802,8 +842,18 @@ app.get('/api/models', async (req, res) => {
         const txt = await rr.text();
         return res.status(502).json({ error: 'OpenAI models error', detail: txt });
       }
-      const data = await rr.json(); // { data: [{id, ...}] }
+      const data = await rr.json();
       models = Array.isArray(data.data) ? data.data.map(m => m.id).filter(Boolean) : [];
+    } else if (LLM_BACKEND === 'ollama-chat') {
+      const rr = await fetch(`${OLLAMA_CHAT_BASE_URL}/api/tags`, {
+        ...(proxyDispatcher ? { dispatcher: proxyDispatcher } : {})
+      });
+      if (!rr.ok) {
+        const txt = await rr.text();
+        return res.status(502).json({ error: 'Ollama tags error', detail: txt });
+      }
+      const data = await rr.json();
+      models = Array.isArray(data.models) ? data.models.map(m => m.name || m.model).filter(Boolean) : [];
     } else {
       const base = OLLAMA_URL.replace(/\/api\/generate.*$/, '');
       const rr = await fetch(`${base}/api/tags`, { method: 'GET' });
@@ -811,7 +861,7 @@ app.get('/api/models', async (req, res) => {
         const txt = await rr.text();
         return res.status(502).json({ error: 'Ollama tags error', detail: txt });
       }
-      const data = await rr.json(); // { models: [{name, model, ...}, ...] }
+      const data = await rr.json();
       models = Array.isArray(data.models)
         ? data.models.map(m => m.name || m.model).filter(Boolean)
         : [];
@@ -831,7 +881,36 @@ app.post('/api/compile', async (req, res) => {
     const requestModel = String(req.body?.model || '').trim() || MODEL;
     if (!query) return res.status(400).json({ error: 'Missing query' });
 
-    let raw;
+    let raw, dsl, reasoning = '', warnings = [];
+
+    if (LLM_BACKEND === 'ollama-chat') {
+      const messages = [
+        { role: 'system', content: TRANSLATION_GUIDE },
+        { role: 'user', content: query }
+      ];
+      const body = {
+        model: requestModel,
+        messages,
+        stream: false,
+        format: DSL_SCHEMA,
+        options: { temperature: 0.7, top_p: 0.9, num_predict: 1024 }
+      };
+      const rr = await fetch(`${OLLAMA_CHAT_BASE_URL}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        ...(proxyDispatcher ? { dispatcher: proxyDispatcher } : {})
+      });
+      const resp = await rr.json();
+      console.log('LLM response:', JSON.stringify(resp).slice(0, 500));
+      const content = resp?.message?.content || '';
+      try {
+        dsl = JSON.parse(content);
+      } catch (e) {
+        return res.status(400).json({ error: 'Model did not return valid JSON', raw: content });
+      }
+    }
+
     if (LLM_BACKEND === 'openai') {
       const messages = [
         { role: 'system', content: TRANSLATION_GUIDE },
@@ -902,11 +981,12 @@ app.post('/api/compile', async (req, res) => {
       return { dsl, reasoning, warnings };
     }
 
-    let dsl, reasoning, warnings;
-    try {
-      ({ dsl, reasoning, warnings} = extractReasoningAndJSON(raw));
-    } catch (e) {
-      return res.status(400).json({ error: 'Model did not return valid JSON', raw });
+    if (!dsl) {
+      try {
+        ({ dsl, reasoning, warnings} = extractReasoningAndJSON(raw));
+      } catch (e) {
+        return res.status(400).json({ error: 'Model did not return valid JSON', raw });
+      }
     }
 
     console.log(dsl);
