@@ -26,6 +26,11 @@ services:
   nl2dsl:
     build:
       context: ./NL2DSL
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        http_proxy: ${http_proxy:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        https_proxy: ${https_proxy:-}
     container_name: cohorter-nl2dsl
     ports:
       - "3002:3002"
@@ -46,6 +51,10 @@ services:
       context: ./WebAPP
       args:
         random: "false"   # set to "true" to run gen_random_data.js during build
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        http_proxy: ${http_proxy:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        https_proxy: ${https_proxy:-}
     container_name: cohorter-webapp
     ports:
       - "7823:3000"
