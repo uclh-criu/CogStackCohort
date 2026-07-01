@@ -418,8 +418,8 @@ export function createAppState() {
           for (let i=0; i<dsl.temporal.chains.length; i++) {
             if (dsl.temporal.chains[i].chain && Array.isArray(dsl.temporal.chains[i].chain)) {
               for (let j=0; j<dsl.temporal.chains[i].chain.length; j++) {
-                t = dsl.temporal.chains[i].chain[j];
-                nt = await resolveOne(t);
+                const t = dsl.temporal.chains[i].chain[j];
+                const nt = await resolveOne(t);
                 if (nt) {
                   dsl.temporal.chains[i].chain[j] = nt;
                 }
