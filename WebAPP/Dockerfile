@@ -17,7 +17,7 @@ RUN if [ -f /usr/src/app/server/data/snomed_terms_data.tar.gz ]; then cd /usr/sr
 ARG random
 RUN if [ "$random" = "true" ] ; then cd /usr/src/app/server/data && node --max-old-space-size=32768 gen_random_data.js ; fi
 
-RUN cd /usr/src/app/client-react && npm install && npm run build
+RUN cd /usr/src/app/client-react && npm install --legacy-peer-deps && npm run build
 
 RUN cd /usr/src/app/server && npm install
 EXPOSE 3000
