@@ -841,7 +841,7 @@ app.post('/api/compile', async (req, res) => {
         model: requestModel,
         messages,
         stream: false,
-        temperature: 0,
+        temperature: 0.1,
         max_tokens: 1024,
         top_p: 1,
       };
