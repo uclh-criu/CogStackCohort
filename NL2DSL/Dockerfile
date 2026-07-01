@@ -1,5 +1,14 @@
 FROM node:20-alpine
 
+ARG HTTP_PROXY
+ARG http_proxy
+ARG HTTPS_PROXY
+ARG https_proxy
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV http_proxy=$http_proxy
+ENV HTTPS_PROXY=$HTTPS_PROXY
+ENV https_proxy=$https_proxy
+
 ENV NODE_ENV=production \
     PORT=3002 \
     OLLAMA_URL=http://ollama:11434/api/generate \
