@@ -124,58 +124,12 @@
     <p class="whitespace-pre-wrap leading-relaxed" x-text="reasoning_stream"></p>
   </div>
   -->
-  <!-- Reasoning (editable) -->
-  <div x-show="reasoning_stream || reasoning_full || nl_reasoning_editing"
+  <!-- Reasoning (readonly) -->
+  <div x-show="reasoning_stream || reasoning_full"
      class="mt-3 rounded-md p-3 text-sm text-gray-700 dark:text-gray-200 border dark:border-gray-700"
      aria-live="polite">
-
-  <div class="mb-2 flex items-center justify-between">
-    <div class="font-medium text-gray-600 dark:text-gray-300">Model reasoning</div>
-
-    <!-- Right-side actions -->
-    <div class="space-x-2">
-      <!-- Readonly state actions -->
-      <button x-show="!nl_reasoning_editing"
-              class="px-2 py-1 rounded border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
-              @click="start_edit_reasoning">
-        Edit
-      </button>
-      <button x-show="!nl_reasoning_editing"
-              class="px-2 py-1 rounded border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
-              @click="nl_query_text = reasoning_full || nl_reasoning; $nextTick(()=> $refs.nlBox?.focus())">
-        Use as query
-      </button>
-
-      <!-- Edit state actions -->
-      <button x-show="nl_reasoning_editing"
-              class="px-2 py-1 rounded bg-purple-600 text-white hover:bg-purple-700"
-              @click="apply_edited_reasoning">
-        Apply
-      </button>
-      <button x-show="nl_reasoning_editing"
-              class="px-2 py-1 rounded border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
-              @click="cancel_edit_reasoning">
-        Cancel
-      </button>
-    </div>
-  </div>
-
-  <!-- Readonly view (streamed) -->
-  <p x-show="!nl_reasoning_editing"
-     class="whitespace-pre-wrap leading-relaxed"
-     x-text="reasoning_stream"></p>
-
-  <!-- Edit view -->
-  <textarea x-show="nl_reasoning_editing"
-            x-model="nl_reasoning_edit_text"
-            rows="6"
-            class="w-full mt-1 rounded bg-transparent border border-gray-300 dark:border-gray-700 p-2 text-sm
-                   text-gray-900 dark:text-gray-100"
-            placeholder="Edit the reasoning here…"></textarea>
-
-  <div x-show="nl_reasoning_editing" class="mt-1 text-xs text-gray-500">
-    Shift+Enter for a new line.
-  </div>
+    <div class="mb-1 font-medium text-gray-600 dark:text-gray-300">Model reasoning</div>
+    <p class="whitespace-pre-wrap leading-relaxed" x-text="reasoning_stream"></p>
   </div>
 
   <!--<div class="text-gray-500" x-text="running_status"></div>-->
