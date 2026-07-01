@@ -855,6 +855,7 @@ app.post('/api/compile', async (req, res) => {
         ...(proxyDispatcher ? { dispatcher: proxyDispatcher } : {})
       });
       const resp = await rr.json();
+      console.log('LLM response:', JSON.stringify(resp).slice(0, 500));
       raw = String(resp?.choices?.[0]?.message?.content || '');
     } else {
       const prompt = `${TRANSLATION_GUIDE}\nUser: ${query}\nJSON:`;
