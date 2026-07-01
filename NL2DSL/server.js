@@ -6,8 +6,21 @@ import cors from 'cors';
 
 // ---- config ----
 const PORT = process.env.PORT || 3002;
+
+// LLM backend: 'ollama' (default) or 'openai'
+const LLM_BACKEND = process.env.LLM_BACKEND || 'openai';
+
+// Ollama settings (used when LLM_BACKEND=ollama)
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:8002/api/generate';
-const MODEL = process.env.OLLAMA_MODEL || 'gpt-oss:20b'; // 'phi4:latest';
+
+// OpenAI-compatible settings (used when LLM_BACKEND=openai)
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://dt4h-uclh.uksouth.cloudapp.azure.com:8080/cms/huggingface-llm/openai/v1';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'dummy';
+const OPENAI_DISABLE_TLS = process.env.OPENAI_DISABLE_TLS !== 'false'; // default true
+if (LLM_BACKEND === 'openai' && OPENAI_DISABLE_TLS) process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+
+// Model (applies to both backends)
+const MODEL = process.env.LLM_MODEL || (LLM_BACKEND === 'openai' ? 'cms-gpt-oss-20b' : 'gpt-oss:20b');
 
 // CORS: allow list via env (comma-separated) or "*"
 const allowList = (process.env.ALLOW_ORIGINS || '*')
@@ -771,20 +784,32 @@ app.use(express.json());
 app.use(express.static('public'));
 
 
-// List available Ollama models (proxy)
+// List available models (proxy)
 app.get('/api/models', async (req, res) => {
   try {
-    const base = OLLAMA_URL.replace(/\/api\/generate.*$/, '');
-    const rr = await fetch(`${base}/api/tags`, { method: 'GET' });
-    if (!rr.ok) {
-      const txt = await rr.text();
-      return res.status(502).json({ error: 'Ollama tags error', detail: txt });
+    let models;
+    if (LLM_BACKEND === 'openai') {
+      const rr = await fetch(`${OPENAI_BASE_URL}/models`, {
+        headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` }
+      });
+      if (!rr.ok) {
+        const txt = await rr.text();
+        return res.status(502).json({ error: 'OpenAI models error', detail: txt });
+      }
+      const data = await rr.json(); // { data: [{id, ...}] }
+      models = Array.isArray(data.data) ? data.data.map(m => m.id).filter(Boolean) : [];
+    } else {
+      const base = OLLAMA_URL.replace(/\/api\/generate.*$/, '');
+      const rr = await fetch(`${base}/api/tags`, { method: 'GET' });
+      if (!rr.ok) {
+        const txt = await rr.text();
+        return res.status(502).json({ error: 'Ollama tags error', detail: txt });
+      }
+      const data = await rr.json(); // { models: [{name, model, ...}, ...] }
+      models = Array.isArray(data.models)
+        ? data.models.map(m => m.name || m.model).filter(Boolean)
+        : [];
     }
-    const data = await rr.json(); // { models: [{name, model, ...}, ...] }
-    // Normalize to an array of strings (prefer "name" then "model")
-    const models = Array.isArray(data.models)
-      ? data.models.map(m => m.name || m.model).filter(Boolean)
-      : [];
     res.json({ models });
   } catch (e) {
     console.error(e);
@@ -800,29 +825,54 @@ app.post('/api/compile', async (req, res) => {
     const requestModel = String(req.body?.model || '').trim() || MODEL;
     if (!query) return res.status(400).json({ error: 'Missing query' });
 
-    const prompt = `${TRANSLATION_GUIDE}\nUser: ${query}\nJSON:`;
-    const body = {
-      model: requestModel,
-      prompt,
-      stream: false,
-      options: {
+    let raw;
+    if (LLM_BACKEND === 'openai') {
+      const messages = [
+        { role: 'system', content: TRANSLATION_GUIDE },
+        { role: 'user', content: query }
+      ];
+      const body = {
+        model: requestModel,
+        messages,
+        stream: false,
         temperature: 0,
-        seed: 42,
-        mirostat: 0,
+        max_tokens: 1024,
         top_p: 1,
-        top_k: 1,
-        repeat_penalty: 1, // disable penalties
-        repeat_last_n: 0,  // disable penalties
-      }
-    };
-
-    const rr = await fetch(OLLAMA_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const resp = await rr.json();
-    const raw = String(resp?.response || '');
+      };
+      const rr = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify(body)
+      });
+      const resp = await rr.json();
+      raw = String(resp?.choices?.[0]?.message?.content || '');
+    } else {
+      const prompt = `${TRANSLATION_GUIDE}\nUser: ${query}\nJSON:`;
+      const body = {
+        model: requestModel,
+        prompt,
+        stream: false,
+        options: {
+          temperature: 0,
+          seed: 42,
+          mirostat: 0,
+          top_p: 1,
+          top_k: 1,
+          repeat_penalty: 1,
+          repeat_last_n: 0,
+        }
+      };
+      const rr = await fetch(OLLAMA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const resp = await rr.json();
+      raw = String(resp?.response || '');
+    }
 
     // --- Extractor: collect <think>...</think> (reasoning) and parse the first JSON object
     function extractReasoningAndJSON(s) {
