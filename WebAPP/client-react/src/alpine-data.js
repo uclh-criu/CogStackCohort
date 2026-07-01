@@ -23,6 +23,17 @@ export function createAppState() {
   const makeLatestHref = () => { const u = new URL(window.location.href); u.searchParams.delete('version'); return u.pathname + u.search + u.hash; };
 
   return {
+    init() {
+      this.logged_in = sessionStorage.getItem('isLoggedIn') === 'true';
+      this.user_role = sessionStorage.getItem('role') || '';
+
+      window.addEventListener('auth-success', (e) => {
+        if (e.detail) {
+          this.logged_in = e.detail.isLoggedIn;
+          this.user_role = e.detail.userRole;
+        }
+      });
+    },
 
     isDark: localStorage.getItem('theme') === 'dark',
     toggleTheme() {
@@ -670,7 +681,7 @@ export function createAppState() {
         'alive': {
           '0': true,
           '1': false,
-          '2': false     
+          '2': false
         },
         'age': {
           '0': true,
@@ -773,69 +784,100 @@ export function createAppState() {
         });
         reader.readAsText(file);
     },
-    admin_logged_in: false,
-    admin_login_panel_show: false,
-    admin_password_input: '',
-    admin_login_message: ' ',
-    admin_login() {
-      this.admin_login_panel_show = true;
-      console.log('admin_login');
-    },
-    async handle_admin_login() {
-      let resp = {};
-      try {
-        resp = await(await fetch("/admin_login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({'password':this.admin_password_input})
-        })).json();
-        console.log(resp)
-        if (resp.msg == 'ok') {
-          this.admin_logged_in = true;
-          this.admin_login_panel_show = false,
-          this.admin_password_input = '';
-          this.admin_login_message = ' '
-        } else {
-          this.admin_logged_in = false;
-          this.admin_password_input = '';
-          this.admin_login_message = 'Passowrd incorrect. Please try again.'
-        }
-      } catch (err) {
-        console.log('fetch("/admin_login") (err):', err);
-        this.running_status = 'Something went wrong in the server, please try again later.';
-        this.admin_logged_in = false;
-        this.admin_login_panel_show = false;
-        this.admin_password_input = '';
-        this.admin_login_message = ' ';
-        this.reset_results();
-        this.clear_charts();
-        return;
-      }
-    },
-    async admin_logout() {
-      let resp = {};
-      try {
-        resp = await(await fetch("/admin_logout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({'msg':'logout'})
-        })).json();
-        console.log(resp)
-        this.admin_logged_in = false;
-        this.admin_login_panel_show = false;
-        this.admin_password_input = '';
-        this.admin_login_message = ' ';
-      } catch (err) {
-        console.log('fetch("/admin_logout") (err):', err);
-        this.running_status = 'Something went wrong in the server, please try again later.';
-        this.admin_logged_in = false;
-        this.admin_login_panel_show = false;
-        this.admin_password_input = '';
-        this.admin_login_message = ' ';
-        this.reset_results();
-        this.clear_charts();
-        return;
-      }
+    // admin_logged_in: false,
+    // admin_login_panel_show: false,
+    // admin_password_input: '',
+    // admin_login_message: ' ',
+    // admin_login() {
+    //   this.admin_login_panel_show = true;
+    //   console.log('admin_login');
+    // },
+    // async handle_admin_login() {
+    //   let resp = {};
+    //   try {
+    //     resp = await(await fetch("/admin_login", {
+    //       method: "POST",
+    //       headers: { "Content-Type": "application/json" },
+    //       body: JSON.stringify({'password':this.admin_password_input})
+    //     })).json();
+    //     console.log(resp)
+    //     if (resp.msg == 'ok') {
+    //       this.admin_logged_in = true;
+    //       this.admin_login_panel_show = false,
+    //       this.admin_password_input = '';
+    //       this.admin_login_message = ' '
+    //     } else {
+    //       this.admin_logged_in = false;
+    //       this.admin_password_input = '';
+    //       this.admin_login_message = 'Passowrd incorrect. Please try again.'
+    //     }
+    //   } catch (err) {
+    //     console.log('fetch("/admin_login") (err):', err);
+    //     this.running_status = 'Something went wrong in the server, please try again later.';
+    //     this.admin_logged_in = false;
+    //     this.admin_login_panel_show = false;
+    //     this.admin_password_input = '';
+    //     this.admin_login_message = ' ';
+    //     this.reset_results();
+    //     this.clear_charts();
+    //     return;
+    //   }
+    // },
+    // async admin_logout() {
+    //   let resp = {};
+    //   try {
+    //     resp = await(await fetch("/admin_logout", {
+    //       method: "POST",
+    //       headers: { "Content-Type": "application/json" },
+    //       body: JSON.stringify({'msg':'logout'})
+    //     })).json();
+    //     console.log(resp)
+    //     this.admin_logged_in = false;
+    //     this.admin_login_panel_show = false;
+    //     this.admin_password_input = '';
+    //     this.admin_login_message = ' ';
+    //   } catch (err) {
+    //     console.log('fetch("/admin_logout") (err):', err);
+    //     this.running_status = 'Something went wrong in the server, please try again later.';
+    //     this.admin_logged_in = false;
+    //     this.admin_login_panel_show = false;
+    //     this.admin_password_input = '';
+    //     this.admin_login_message = ' ';
+    //     this.reset_results();
+    //     this.clear_charts();
+    //     return;
+    //   }
+    // },
+   logged_in: false,
+   user_role: '',
+   async logout() {
+    let resp = {};
+    try {
+      resp = await(await fetch("/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({'msg':'logout'})
+      })).json();
+      console.log(resp)
+
+      // 1. Clear session variables so Gatekeeper doesn't auto-login
+      sessionStorage.removeItem('isLoggedIn');
+      sessionStorage.removeItem('role');
+
+      this.logged_in = false;
+      this.role = '';
+
+      // 2. Safely alert React to pull the plug
+      window.dispatchEvent(new CustomEvent('auth-logout'));
+
+    } catch (err) {
+      console.log('fetch("/logout") (err):', err);
+      this.running_status = 'Something went wrong in the server, please try again later.';
+      this.logged_in = false;
+      this.reset_results();
+      this.clear_charts();
+      return;
+    }
     },
     async export_patients() {
       let resp = {};

@@ -572,6 +572,13 @@ export async function mountCohorterApp(rootEl) {
 
   updateAll();
 
+  if (typeof state.init === 'function') {
+    state.init();
+    // Re-run updateAll to ensure the DOM immediately absorbs
+    // the logged_in and user_role values populated by init()
+    updateAll();
+  }
+
   if (typeof state.submit_query === 'function') {
     state.submit_query();
   }

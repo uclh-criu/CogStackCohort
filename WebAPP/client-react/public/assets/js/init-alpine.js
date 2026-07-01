@@ -763,68 +763,70 @@ function data() {
         const fileSelector = document.getElementById('file_selector');
         fileSelector.removeEventListener('change', this.handle_load_query.bind(this));
     },
-    admin_logged_in: false,
-    admin_login_panel_show: false,
-    admin_password_input: '',
-    admin_login_message: ' ',
-    admin_login() {
-      this.admin_login_panel_show = true;
-      console.log('admin_login');
-    },
-    async handle_admin_login() {
-      try {
-        resp = await(await fetch("/admin_login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({'password':this.admin_password_input})
-        })).json();
-        console.log(resp)
-        if (resp.msg == 'ok') {
-          this.admin_logged_in = true;
-          this.admin_login_panel_show = false,
-          this.admin_password_input = '';
-          this.admin_login_message = ' '
-        } else {
-          this.admin_logged_in = false;
-          this.admin_password_input = '';
-          this.admin_login_message = 'Passowrd incorrect. Please try again.'
-        }
-      } catch (err) {
-        console.log('fetch("/admin_login") (err):', err);
-        this.running_status = 'Something went wrong in the server, please try again later.';
-        this.admin_logged_in = false;
-        this.admin_login_panel_show = false;
-        this.admin_password_input = '';
-        this.admin_login_message = ' ';
-        this.reset_results();
-        this.clear_charts();
-        return;
-      }
-    },
-    async admin_logout() {
-      try {
-        resp = await(await fetch("/admin_logout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({'msg':'logout'})
-        })).json();
-        console.log(resp)
-        this.admin_logged_in = false;
-        this.admin_login_panel_show = false;
-        this.admin_password_input = '';
-        this.admin_login_message = ' ';
-      } catch (err) {
-        console.log('fetch("/admin_logout") (err):', err);
-        this.running_status = 'Something went wrong in the server, please try again later.';
-        this.admin_logged_in = false;
-        this.admin_login_panel_show = false;
-        this.admin_password_input = '';
-        this.admin_login_message = ' ';
-        this.reset_results();
-        this.clear_charts();
-        return;
-      }
-    },
+    // logged_in: false,
+    // user_role: '',
+    // admin_logged_in: false,
+    // admin_login_panel_show: false,
+    // admin_password_input: '',
+    // admin_login_message: ' ',
+    // admin_login() {
+    //   this.admin_login_panel_show = true;
+    //   console.log('admin_login');
+    // },
+    // async handle_admin_login() {
+    //   try {
+    //     resp = await(await fetch("/admin_login", {
+    //       method: "POST",
+    //       headers: { "Content-Type": "application/json" },
+    //       body: JSON.stringify({'password':this.admin_password_input})
+    //     })).json();
+    //     console.log(resp)
+    //     if (resp.msg == 'ok') {
+    //       this.admin_logged_in = true;
+    //       this.admin_login_panel_show = false,
+    //       this.admin_password_input = '';
+    //       this.admin_login_message = ' '
+    //     } else {
+    //       this.admin_logged_in = false;
+    //       this.admin_password_input = '';
+    //       this.admin_login_message = 'Passowrd incorrect. Please try again.'
+    //     }
+    //   } catch (err) {
+    //     console.log('fetch("/admin_login") (err):', err);
+    //     this.running_status = 'Something went wrong in the server, please try again later.';
+    //     this.admin_logged_in = false;
+    //     this.admin_login_panel_show = false;
+    //     this.admin_password_input = '';
+    //     this.admin_login_message = ' ';
+    //     this.reset_results();
+    //     this.clear_charts();
+    //     return;
+    //   }
+    // },
+    // async admin_logout() {
+    //   try {
+    //     resp = await(await fetch("/admin_logout", {
+    //       method: "POST",
+    //       headers: { "Content-Type": "application/json" },
+    //       body: JSON.stringify({'msg':'logout'})
+    //     })).json();
+    //     console.log(resp)
+    //     this.admin_logged_in = false;
+    //     this.admin_login_panel_show = false;
+    //     this.admin_password_input = '';
+    //     this.admin_login_message = ' ';
+    //   } catch (err) {
+    //     console.log('fetch("/admin_logout") (err):', err);
+    //     this.running_status = 'Something went wrong in the server, please try again later.';
+    //     this.admin_logged_in = false;
+    //     this.admin_login_panel_show = false;
+    //     this.admin_password_input = '';
+    //     this.admin_login_message = ' ';
+    //     this.reset_results();
+    //     this.clear_charts();
+    //     return;
+    //   }
+    // },
     async export_patients() {
       try {
         resp = await(await fetch("/export", {

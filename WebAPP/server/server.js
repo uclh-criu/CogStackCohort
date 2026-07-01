@@ -37,8 +37,22 @@ console.log('Loading data...');
 const snomed_terms = require('./data/snomed_terms.json');
 const cui_pt2ch = require('./data/cui_pt2ch.json');
 
-// for admin login
-const admin_pwd = process.env.PASSWORD || 'admin_pass';
+// for admin login (deprecated)
+// const admin_pwd = process.env.PASSWORD || 'admin_pass';
+
+//USER Account
+const users = [
+  {
+    "username": "admin",
+    "password": "pass",
+    "role": "admin"
+  },
+  {
+    "username": "demo",
+    "password": "pass",
+    "role": "user"
+  }
+];
 
 //========================================================
 // db variables
@@ -662,27 +676,67 @@ app.post('/compare_query', (req, res) => {
 
 //========================================================
 // api to handle admin_login
-app.post("/admin_login", (req, res) => {
-    console.log('/admin_login')
-    const pwd = req.body.password;
-    if (pwd == admin_pwd) {
+// app.post("/admin_login", (req, res) => {
+//     console.log('/admin_login')
+//     const pwd = req.body.password;
+//     if (pwd == admin_pwd) {
+//         req.session.logged_in = true;
+//         res.status(200).json({'msg':'ok'}).end();
+//     } else {
+//         req.session.destroy((err) => console.log(err));
+//         res.status(200).json({'msg':'error'}).end();
+//     }
+// });
+//========================================================
+
+//========================================================
+// api to handle admin_logout
+// app.post("/admin_logout", (req, res) => {
+//     console.log('/admin_logout')
+//     req.session.destroy((err) => console.log(err));
+//     res.status(200).json({'msg':'ok'}).end();
+// });
+//========================================================
+
+//========================================================
+// api to handle admin_login
+app.post("/login", (req, res) => {
+    console.log('/login');
+
+    const { username, password } = req.body;
+
+    // 1. Find the user in the array matching the provided username
+    const user = users.find(u => u.username === username);
+
+    // 2. Check if the user exists and the password matches
+    if (user && user.username === username && user.password === password) {
+        // Store user info in the session
         req.session.logged_in = true;
-        res.status(200).json({'msg':'ok'}).end();
+        req.session.role = user.role;
+        req.session.user = { username: user.username, role: user.role };
+
+        return res.status(200).json({ 'msg': 'ok', 'role': user.role });
     } else {
-        req.session.destroy((err) => console.log(err));
-        res.status(200).json({'msg':'error'}).end();
+        // Destroy session if login fails
+        if (req.session) {
+            req.session.destroy((err) => {
+                if (err) console.error("Session destroy error:", err);
+            });
+        }
+        return res.status(401).json({ 'msg': 'error', 'error': 'Invalid username or password' });
     }
 });
 //========================================================
 
 //========================================================
-// api to handle admin_logout
-app.post("/admin_logout", (req, res) => {
-    console.log('/admin_logout')
+// api to handle logout
+app.post("/logout", (req, res) => {
+    console.log('/logout')
     req.session.destroy((err) => console.log(err));
     res.status(200).json({'msg':'ok'}).end();
 });
 //========================================================
+
 
 //========================================================
 // api to handle export patient list

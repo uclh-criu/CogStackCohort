@@ -1335,6 +1335,11 @@ select {
   background-color: rgb(249 250 251 / var(--tw-bg-opacity, 1));
 }
 
+.bg-deep-grey-600 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(64 64 64 / var(--tw-bg-opacity, 1));
+}
+
 .bg-purple-500 {
   --tw-bg-opacity: 1;
   background-color: rgb(144 97 249 / var(--tw-bg-opacity, 1));
