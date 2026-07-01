@@ -61,9 +61,10 @@ const DSL_SCHEMA = {
       required: ['age', 'sex', 'ethnicity', 'vital_status'],
       additionalProperties: false
     },
-    options: { type: 'object' }
+    options: { type: 'object' },
+    reasoning: { type: 'string' }
   },
-  required: ['phenotype', 'temporal', 'demographics', 'options'],
+  required: ['phenotype', 'temporal', 'demographics', 'options', 'reasoning'],
   additionalProperties: false
 };
 
@@ -513,14 +514,9 @@ Assistant:
 const TRANSLATION_GUIDE = `
 You are a compiler from English to a strict JSON DSL.
 
-Output format (MUST follow exactly):
-<think>
-- brief bullet rationale (≤80 words): all_of / any_of / none_of, demographics, temporal (windows in days)
-</think>
-{ …valid JSON… }
-
-Target DSL:
+Output format (MUST follow exactly) — a single JSON object:
 {
+  "reasoning": "brief bullet rationale (≤80 words): all_of / any_of / none_of, demographics, temporal (windows in days)",
   "phenotype": { "all_of": [], "any_of": [], "none_of": [] },
   "temporal":  { "chains": [] },
   "demographics": { "age": {}, "sex": [], "ethnicity": [], "vital_status": [] },
@@ -568,89 +564,23 @@ Always include top-level keys; valid JSON; deduplicate terms.
 
 User: adults having any cancer
 Assistant:
-<think>
-- any_of: malignant neoplasm
-- demographics: age ≥18
-- temporal: none
-</think>
-{
-  "phenotype": { "all_of": [], "any_of": ["malignant neoplasm"], "none_of": [] },
-  "temporal": { "chains": [] },
-  "demographics": { "age": { "min": 18 }, "sex": [], "ethnicity": [], "vital_status": [] },
-  "options": {}
-}
+{ "reasoning": "any_of: malignant neoplasm; demographics: age ≥18; temporal: none", "phenotype": { "all_of": [], "any_of": ["malignant neoplasm"], "none_of": [] }, "temporal": { "chains": [] }, "demographics": { "age": { "min": 18 }, "sex": [], "ethnicity": [], "vital_status": [] }, "options": {} }
 
 User: adult men with MI then heart failure within 1 year
 Assistant:
-<think>
-- all_of: myocardial infarction, heart failure
-- demographics: age ≥18, sex male
-- temporal: [MI → HF], max 365d
-</think>
-{
-  "phenotype": {
-    "all_of": ["myocardial infarction", "heart failure"],
-    "any_of": [],
-    "none_of": []
-  },
-  "temporal": {
-    "chains": [
-      { "chain": ["myocardial infarction", "heart failure"], "windows_between": [ { "max": 365 } ], "inclusive": false }
-    ]
-  },
-  "demographics": { "age": { "min": 18 }, "sex": ["male"], "ethnicity": [], "vital_status": [] },
-  "options": {}
-}
+{ "reasoning": "all_of: myocardial infarction, heart failure; demographics: age ≥18, sex male; temporal: [MI → HF] max 365d", "phenotype": { "all_of": ["myocardial infarction", "heart failure"], "any_of": [], "none_of": [] }, "temporal": { "chains": [ { "chain": ["myocardial infarction", "heart failure"], "windows_between": [ { "max": 365 } ], "inclusive": false } ] }, "demographics": { "age": { "min": 18 }, "sex": ["male"], "ethnicity": [], "vital_status": [] }, "options": {} }
 
 User: patients with diabetes or hypertension
 Assistant:
-<think>
-- any_of: diabetes mellitus | hypertension
-- demographics: none
-- temporal: none
-</think>
-{
-  "phenotype": { "all_of": [], "any_of": ["diabetes mellitus", "hypertension"], "none_of": [] },
-  "temporal": { "chains": [] },
-  "demographics": { "age": {}, "sex": [], "ethnicity": [], "vital_status": [] },
-  "options": {}
-}
+{ "reasoning": "any_of: diabetes mellitus, hypertension; demographics: none; temporal: none", "phenotype": { "all_of": [], "any_of": ["diabetes mellitus", "hypertension"], "none_of": [] }, "temporal": { "chains": [] }, "demographics": { "age": {}, "sex": [], "ethnicity": [], "vital_status": [] }, "options": {} }
 
 User: women aged 50–70 with diabetes; alive
 Assistant:
-<think>
-- all_of: diabetes mellitus
-- demographics: age 50–70, sex female, vital_status alive
-- temporal: none
-</think>
-{
-  "phenotype": { "all_of": ["diabetes mellitus"], "any_of": [], "none_of": [] },
-  "temporal": { "chains": [] },
-  "demographics": { "age": { "min": 50, "max": 70 }, "sex": ["female"], "ethnicity": [], "vital_status": ["alive"] },
-  "options": {}
-}
+{ "reasoning": "all_of: diabetes mellitus; demographics: age 50–70, sex female, vital_status alive; temporal: none", "phenotype": { "all_of": ["diabetes mellitus"], "any_of": [], "none_of": [] }, "temporal": { "chains": [] }, "demographics": { "age": { "min": 50, "max": 70 }, "sex": ["female"], "ethnicity": [], "vital_status": ["alive"] }, "options": {} }
 
 User: Man aged 18 or above with DM-II and then HF within 1 year
 Assistant:
-<think>
-- all_of: diabetes mellitus type 2, heart failure
-- demographics: age ≥18, sex male
-- temporal: chain [DM2 → HF], window max=365 days
-</think>
-{
-  "phenotype": {
-    "all_of": ["diabetes mellitus type 2", "heart failure"],
-    "any_of": [],
-    "none_of": []
-  },
-  "temporal": {
-    "chains": [
-      { "chain": ["diabetes mellitus type 2", "heart failure"], "windows_between": [ { "max": 365 } ], "inclusive": false }
-    ]
-  },
-  "demographics": { "age": { "min": 18 }, "sex": ["male"], "ethnicity": [], "vital_status": [] },
-  "options": {}
-}
+{ "reasoning": "all_of: diabetes mellitus type 2, heart failure; demographics: age ≥18, sex male; temporal: [DM2 → HF] max 365d", "phenotype": { "all_of": ["diabetes mellitus type 2", "heart failure"], "any_of": [], "none_of": [] }, "temporal": { "chains": [ { "chain": ["diabetes mellitus type 2", "heart failure"], "windows_between": [ { "max": 365 } ], "inclusive": false } ] }, "demographics": { "age": { "min": 18 }, "sex": ["male"], "ethnicity": [], "vital_status": [] }, "options": {} }
 `;
 
 
@@ -905,7 +835,10 @@ app.post('/api/compile', async (req, res) => {
       console.log('LLM response:', JSON.stringify(resp).slice(0, 500));
       const content = resp?.message?.content || '';
       try {
-        dsl = JSON.parse(content);
+        const parsed = JSON.parse(content);
+        reasoning = parsed.reasoning || '';
+        delete parsed.reasoning;
+        dsl = parsed;
       } catch (e) {
         return res.status(400).json({ error: 'Model did not return valid JSON', raw: content });
       }
