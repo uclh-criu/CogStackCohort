@@ -893,7 +893,9 @@ app.post('/api/compile', async (req, res) => {
       const start = noThink.indexOf('{');
       const end = noThink.lastIndexOf('}');
       if (start === -1 || end === -1 || end < start) throw new Error('No JSON object found');
-      const candidate = noThink.slice(start, end + 1);
+      let candidate = noThink.slice(start, end + 1);
+      // Fix markdown artifacts: unescape \_ -> _ and trim spaces inside quoted keys
+      candidate = candidate.replace(/\\_/g, '_');
       const dsl = JSON.parse(candidate);
       const warnings = [];
       //dsl = normalizeDSL(dsl, warnings);
