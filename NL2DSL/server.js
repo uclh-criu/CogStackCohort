@@ -911,7 +911,7 @@ app.post('/api/compile', async (req, res) => {
       }
     }
 
-    if (LLM_BACKEND === 'openai') {
+    else if (LLM_BACKEND === 'openai') {
       const messages = [
         { role: 'system', content: TRANSLATION_GUIDE },
         { role: 'user', content: query }
